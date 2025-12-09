@@ -110,18 +110,3 @@ MIT License - see [LICENSE](LICENSE) for details
 ---
 
 *Last updated: December 2024*
-```
-
-### Step 6: Commit and Push with GitHub Desktop
-
-1. **Switch to GitHub Desktop**
-2. You'll see all your new files in the left panel
-3. **Bottom left**, write commit message:
-```
-   Create repository structure and initial documentation
-   
-   - Add organized directory structure for docs, configs, scripts
-   - Create .gitignore to protect sensitive data
-   - Add comprehensive README with project overview
-   - Create placeholder documentation files
-   - Update CHANGELOG
