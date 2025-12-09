@@ -2,9 +2,13 @@
 
 A comprehensive offensive and defensive security testing environment built on Unraid infrastructure. This lab enables realistic attack simulations with full detection and logging capabilities.
 
-## Architecture Overview
+## Overview
 
-![Lab Architecture Diagram](images/architecture-diagram.png)
+This project documents the setup, configuration, and operation of a home cybersecurity lab designed for purple team operations - combining both offensive (red team) and defensive (blue team) security practices.
+
+**Current Status:** 🚧 Documentation in progress
+
+## Architecture
 
 **Attack Infrastructure:**
 - Kali Linux (Raspberry Pi 4) - Offensive security platform
@@ -12,13 +16,13 @@ A comprehensive offensive and defensive security testing environment built on Un
 
 **Detection & Logging Stack:**
 - Wazuh - SIEM and threat detection
-- Graylog - Log management and analysis  
+- Graylog - Log management and analysis
 - OpenSearch - Log storage and indexing
 - MongoDB - Metadata storage
 
-**Network:**
+**Infrastructure:**
+- Unraid server hosting VMs and containers
 - Isolated lab network segment
-- Monitored traffic flows
 - Tailscale VPN for secure remote access
 
 ## Objectives
@@ -28,11 +32,45 @@ A comprehensive offensive and defensive security testing environment built on Un
 3. **SIEM Engineering:** Build practical experience with enterprise logging infrastructure
 4. **Incident Response:** Practice investigation workflows from alert to remediation
 
+## Repository Structure
+```
+📁 purple-team-homelab/
+├── 📄 README.md              ← You are here
+├── 📁 docs/                  ← Complete documentation
+│   ├── 📁 setup/             ← Step-by-step setup guides
+│   └── 📄 architecture.md    ← System design overview
+├── 📁 configs/               ← Configuration templates
+├── 📁 scripts/               ← Automation scripts
+├── 📁 images/                ← Diagrams and screenshots
+└── 📁 examples/              ← Sample outputs and logs
+```
+
+## Documentation
+
+### Setup Guides
+- [Prerequisites](docs/setup/01-prerequisites.md) - Hardware, software, and network requirements
+- [Network Setup](docs/setup/02-network-setup.md) - Network planning and isolation
+- [Unraid Configuration](docs/setup/03-unraid-config.md) - Base system setup
+- [Attack Infrastructure](docs/setup/04-attack-infra.md) - Deploy Kali and Metasploitable
+- [Detection Stack](docs/setup/05-detection-stack.md) - SIEM deployment
+- [Validation](docs/setup/06-validation.md) - Testing and verification
+
+### Technical Documentation
+- [Architecture Overview](docs/architecture.md) - System design and component relationships
+- [Attack Scenarios](docs/attack-scenarios.md) - Documented attacks and detections
+- [Detection Rules](docs/detection-rules.md) - Custom Wazuh rules
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [Lessons Learned](docs/lessons-learned.md) - Key insights and takeaways
+
+## Quick Start
+
+Coming soon - comprehensive setup guide for building your own purple team lab.
+
 ## Lab Capabilities
 
 ### Attack Simulations
 - Network reconnaissance and scanning
-- Vulnerability exploitation (Metasploit framework)
+- Vulnerability exploitation
 - Post-exploitation techniques
 - Lateral movement scenarios
 
@@ -42,52 +80,48 @@ A comprehensive offensive and defensive security testing environment built on Un
 - Alert tuning and false positive reduction
 - Threat hunting queries
 
-## Quick Start
-
-[Link to detailed setup guide](docs/setup-guide.md)
-
-**Prerequisites:**
-- Unraid server with minimum 16GB RAM
-- Raspberry Pi 4 (4GB+ recommended for Kali)
-- Basic networking knowledge
-
-**Basic Setup:**
-1. Deploy Metasploitable 2 VM on Unraid
-2. Install Kali Linux on Raspberry Pi 4
-3. Deploy Wazuh stack using Docker Compose
-4. Configure network isolation and monitoring
-5. Install Wazuh agents on target systems
-
-## Documentation
-
-- [Architecture Details](docs/architecture.md)
-- [Complete Setup Guide](docs/setup-guide.md)
-- [Attack Scenarios](docs/attack-scenarios.md)
-- [Detection Rules](docs/detection-rules.md)
-
-## Key Learnings
-
-**Technical Challenges Overcome:**
-- SIEM resource optimization on consumer hardware
-- Network segmentation while maintaining management access
-- Log volume management and retention strategies
-
-**Security Insights:**
-- Detection patterns that work vs. generate noise
-- Importance of context in alert investigation
-- Balance between security monitoring and system performance
-
 ## Future Enhancements
 
+- [ ] Complete documentation of all setup procedures
 - [ ] Additional vulnerable targets (DVWA, HackTheBox VMs)
 - [ ] Automated attack playbooks
 - [ ] Integration with MITRE ATT&CK framework
-- [ ] Custom detection dashboard
+- [ ] Custom detection dashboards
+- [ ] Video walkthroughs of attack scenarios
 
-## Blog Post
+## Blog
 
-Read the full writeup: [Building a Purple Team Lab on Unraid](https://gregqlewis.com/purple-team-lab)
+Read more about this project at [gregqlewis.com](https://gregqlewis.com)
 
 ## Disclaimer
 
 This lab is for educational purposes only. All attack techniques are performed in an isolated environment against systems I own and control.
+
+## License
+
+MIT License - see [LICENSE](LICENSE) for details
+
+## Contact
+
+- **Blog:** [gregqlewis.com](https://gregqlewis.com)
+- **LinkedIn:** [Your LinkedIn]
+- **GitHub:** [@gregqlewis](https://github.com/gregqlewis)
+
+---
+
+*Last updated: December 2024*
+```
+
+### Step 6: Commit and Push with GitHub Desktop
+
+1. **Switch to GitHub Desktop**
+2. You'll see all your new files in the left panel
+3. **Bottom left**, write commit message:
+```
+   Create repository structure and initial documentation
+   
+   - Add organized directory structure for docs, configs, scripts
+   - Create .gitignore to protect sensitive data
+   - Add comprehensive README with project overview
+   - Create placeholder documentation files
+   - Update CHANGELOG
