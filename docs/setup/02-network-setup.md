@@ -1,3 +1,5 @@
+**Current Status:** 🚧 Lab is operational on <internal-subnet> without VLAN isolation while awaiting managed switch. Attack methodology and detection techniques remain the same regardless of IP scheme.
+
 # Network Setup
 
 Network planning, isolation strategy, and configuration for the purple team lab.
