@@ -36,13 +36,33 @@ This project documents the setup, configuration, and operation of a home cyberse
 ```
 📁 purple-team-homelab/
 ├── 📄 README.md              ← You are here
-├── 📁 docs/                  ← Complete documentation
-│   ├── 📁 setup/             ← Step-by-step setup guides
-│   └── 📄 architecture.md    ← System design overview
-├── 📁 configs/               ← Configuration templates
-├── 📁 scripts/               ← Automation scripts
-├── 📁 images/                ← Diagrams and screenshots
-└── 📁 examples/              ← Sample outputs and logs
+├── 📁 docs/
+│   ├── 📁 attacks/           ← ATT&CK technique documentation
+│   │   └── T1087-Account-Discovery.md
+│   ├── 📁 setup/             ← Lab setup guides
+│   ├── architecture.md       ← System design overview
+│   ├── attack-scenarios.md
+│   ├── detection-rules.md
+│   └── troubleshooting.md
+├── 📁 configs/
+│   └── 📁 sysmon/            ← Sysmon configuration files
+│       └── sysmonconfig.xml
+├── 📁 scripts/
+│   ├── 📁 attacks/           ← Attack execution scripts
+│   │   └── T1087-enum-accounts.sh
+│   └── 📁 monitoring/        ← Detection queries
+│       ├── Collect-SysmonLogs.ps1
+│       └── T1087-Detection-Queries.ps1
+├── 📁 images/
+│   ├── 📁 architecture/      ← Network diagrams
+│   ├── 📁 screenshots/       ← Lab screenshots
+│   │   └── 📁 T1087/
+│   └── 📁 diagrams/
+└── 📁 examples/
+    ├── 📁 logs/              ← Sample logs and outputs
+    │   └── 📁 T1087/
+    ├── 📁 alerts/
+    └── 📁 reports/
 ```
 
 ## Documentation
@@ -79,6 +99,20 @@ Coming soon - comprehensive setup guide for building your own purple team lab.
 - Log correlation across multiple sources
 - Alert tuning and false positive reduction
 - Threat hunting queries
+
+## Techniques Demonstrated
+
+### Discovery
+- **[T1087 - Account Discovery](./docs/attacks/T1087-Account-Discovery.md)** ✅ Complete
+  - SMB-based user enumeration
+  - Detection via Windows Security logs
+  - Lessons in tool limitations and configuration
+
+### Credential Access
+- **T1003 - OS Credential Dumping** (Planned)
+
+### Initial Access
+- **T1078 - Valid Accounts** (Planned)
 
 ## Future Enhancements
 
