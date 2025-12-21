@@ -138,9 +138,9 @@ MIT License - see [LICENSE](LICENSE) for details
 ## Contact
 
 - **Blog:** [gregqlewis.com](https://gregqlewis.com)
-- **LinkedIn:** [Your LinkedIn]
+- **LinkedIn:** (https://linkedin.com/in/gregqlewis)
 - **GitHub:** [@gregqlewis](https://github.com/gregqlewis)
 
 ---
 
-*Last updated: December 2024*
+*Last updated: December 2025*
