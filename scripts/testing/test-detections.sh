@@ -24,23 +24,3 @@ echo "=== Test Results ==="
 echo "Passed: $TESTS_PASSED"
 echo "Failed: $TESTS_FAILED"
 ```
-
----
-
-## GitHub Structure with Scripts
-```
-purple-team-homelab/
-├── scripts/
-│   ├── setup/
-│   │   ├── deploy-wazuh.sh
-│   │   └── configure-agents.sh
-│   ├── attacks/
-│   │   ├── automated-recon.sh
-│   │   ├── vsftpd-exploit.rc
-│   │   └── brute-force-test.sh
-│   ├── monitoring/
-│   │   ├── lab-health-check.sh
-│   │   ├── check-agent-status.sh
-│   │   └── alert-summary.sh
-│   └── testing/
-│       └── test-detections.sh
