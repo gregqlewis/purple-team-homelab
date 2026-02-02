@@ -1,39 +1,28 @@
-# Sensitive configuration files
-*.env
-*secrets*
-*password*
-*credentials*
-
-# Local testing files
-test/
-tmp/
-temp/
-
-# Log files
-*.log
-logs/
+# Sensitive data
+*.key
+*.pem
+*.crt
+credentials
+secrets/
+*.aws/
 
 # System files
 .DS_Store
 Thumbs.db
 *.swp
-*.swo
+*.bak
+*~
 
-# IDE files
+# IDE
 .vscode/
 .idea/
 *.iml
 
-# Backup files
-*.bak
-*.backup
-*~
+# Logs
+*.log
+logs/
 
-# Docker volumes
-volumes/
-data/
-
-# Personal notes
-notes.txt
-todo.md
-scratch/
+# Temporary files
+tmp/
+temp/
+*.tmp
