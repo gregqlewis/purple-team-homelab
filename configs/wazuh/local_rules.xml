@@ -1,1 +1,316 @@
-[paste the local_rules.xml artifact content]
+<!--
+  Purple Team Lab - Custom Wazuh Detection Rules
+  Author: Greg Lewis
+  Website: https://gregqlewis.com
+  
+  These rules detect attacks against the intentionally vulnerable lab environment.
+  Each rule is mapped to MITRE ATT&CK techniques for threat hunting and analysis.
+-->
+
+<group name="local,syslog,">
+
+  <!-- ========================================== -->
+  <!-- SSH Authentication Rules                   -->
+  <!-- ========================================== -->
+  
+  <!-- Detect SSH Root Login Attempts (T1078) -->
+  <rule id="100001" level="10">
+    <if_sid>5715</if_sid>
+    <user>root</user>
+    <description>SSH root login detected - Possible Valid Accounts attack (T1078)</description>
+    <mitre>
+      <id>T1078</id>
+    </mitre>
+    <group>authentication_success,pci_dss_10.2.5,</group>
+  </rule>
+
+  <!-- Detect SSH Brute Force Success -->
+  <rule id="100002" level="12">
+    <if_sid>5715</if_sid>
+    <user>admin|backup|developer</user>
+    <description>Weak user account SSH login - Possible brute force success (T1110)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_success,</group>
+  </rule>
+
+  <!-- Detect Multiple Failed SSH Attempts -->
+  <rule id="100003" level="8" frequency="5" timeframe="120">
+    <if_matched_sid>5716</if_matched_sid>
+    <description>Multiple SSH authentication failures - Brute force attempt detected (T1110)</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failures,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- Docker API Access Rules                    -->
+  <!-- ========================================== -->
+
+  <!-- Detect Docker API Access (T1611) -->
+  <rule id="100010" level="8">
+    <decoded_as>web-accesslog</decoded_as>
+    <match>:2375</match>
+    <description>Docker API access detected - Possible container escape attempt (T1611)</description>
+    <mitre>
+      <id>T1611</id>
+    </mitre>
+    <group>docker,pci_dss_10.6.1,</group>
+  </rule>
+
+  <!-- Detect Docker Container Creation via API -->
+  <rule id="100011" level="10">
+    <if_sid>100010</if_sid>
+    <match>POST /containers/create</match>
+    <description>Docker container creation via exposed API - Critical container escape risk (T1611)</description>
+    <mitre>
+      <id>T1611</id>
+    </mitre>
+    <group>docker,pci_dss_10.6.1,</group>
+  </rule>
+
+  <!-- Detect Privileged Container Creation -->
+  <rule id="100012" level="12">
+    <if_sid>100011</if_sid>
+    <match>privileged</match>
+    <description>Privileged Docker container created - High risk of host compromise (T1611)</description>
+    <mitre>
+      <id>T1611</id>
+    </mitre>
+    <group>docker,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- NFS Mount Activity Rules                   -->
+  <!-- ========================================== -->
+
+  <!-- Detect NFS Mount Activity (T1039) -->
+  <rule id="100020" level="7">
+    <match>mount.nfs</match>
+    <description>NFS mount activity detected - Possible network share discovery (T1039)</description>
+    <mitre>
+      <id>T1039</id>
+    </mitre>
+    <group>nfs,</group>
+  </rule>
+
+  <!-- Detect NFS Share Access from External Host -->
+  <rule id="100021" level="9">
+    <program_name>nfsd</program_name>
+    <match>MOUNT|ACCESS</match>
+    <description>NFS share accessed - Data from Network Shared Drive (T1039)</description>
+    <mitre>
+      <id>T1039</id>
+    </mitre>
+    <group>nfs,pci_dss_10.2.5,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- FTP Access Rules                           -->
+  <!-- ========================================== -->
+
+  <!-- Detect FTP Anonymous Login (T1021.002) -->
+  <rule id="100030" level="8">
+    <match>anonymous</match>
+    <decoded_as>vsftpd</decoded_as>
+    <description>FTP anonymous login detected - Remote Services abuse (T1021.002)</description>
+    <mitre>
+      <id>T1021.002</id>
+    </mitre>
+    <group>ftp,pci_dss_10.2.5,</group>
+  </rule>
+
+  <!-- Detect FTP File Upload -->
+  <rule id="100031" level="9">
+    <if_sid>100030</if_sid>
+    <match>UPLOAD|STOR</match>
+    <description>Anonymous FTP file upload - Possible data staging (T1074)</description>
+    <mitre>
+      <id>T1074</id>
+    </mitre>
+    <group>ftp,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- Privilege Escalation Rules                 -->
+  <!-- ========================================== -->
+
+  <!-- Detect SUID Binary Execution (T1548) -->
+  <rule id="100040" level="12">
+    <match>rootbash</match>
+    <description>SUID binary execution detected - Privilege escalation attempt (T1548)</description>
+    <mitre>
+      <id>T1548</id>
+    </mitre>
+    <group>privilege_escalation,pci_dss_10.2.2,</group>
+  </rule>
+
+  <!-- Detect Sudo Usage by Backup User -->
+  <rule id="100041" level="10">
+    <match>backup.*sudo</match>
+    <description>Backup user sudo execution - Possible privilege escalation (T1548)</description>
+    <mitre>
+      <id>T1548</id>
+    </mitre>
+    <group>privilege_escalation,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- Credential Access Rules                    -->
+  <!-- ========================================== -->
+
+  <!-- Detect AWS Credentials File Access (T1552.001) -->
+  <rule id="100050" level="10">
+    <match>.aws/credentials</match>
+    <description>AWS credentials file accessed - Unsecured credentials (T1552.001)</description>
+    <mitre>
+      <id>T1552.001</id>
+    </mitre>
+    <group>credential_access,pci_dss_10.2.1,</group>
+  </rule>
+
+  <!-- Detect Config File with Credentials Access -->
+  <rule id="100051" level="10">
+    <match>/var/www/html/app/config.php</match>
+    <description>Web application config file with credentials accessed (T1552)</description>
+    <mitre>
+      <id>T1552</id>
+    </mitre>
+    <group>credential_access,</group>
+  </rule>
+
+  <!-- Detect SSH Key Access -->
+  <rule id="100052" level="9">
+    <match>\.ssh/id_rsa|\.ssh/id_ed25519|\.ssh/authorized_keys</match>
+    <description>SSH private key or authorized_keys accessed (T1552.004)</description>
+    <mitre>
+      <id>T1552.004</id>
+    </mitre>
+    <group>credential_access,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- Cron Job Manipulation Rules                -->
+  <!-- ========================================== -->
+
+  <!-- Detect Suspicious Cron Activity (T1053.003) -->
+  <rule id="100060" level="9">
+    <match>/usr/local/bin/backup.sh</match>
+    <description>World-writable cron script executed - Scheduled Task/Job abuse (T1053.003)</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>cron,</group>
+  </rule>
+
+  <!-- Detect Crontab Modification -->
+  <rule id="100061" level="10">
+    <match>crontab</match>
+    <match>MODIFY|REPLACE</match>
+    <description>Crontab modified - Possible persistence mechanism (T1053.003)</description>
+    <mitre>
+      <id>T1053.003</id>
+    </mitre>
+    <group>cron,persistence,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- DVWA Web Application Rules                 -->
+  <!-- ========================================== -->
+
+  <!-- Detect DVWA Access -->
+  <rule id="100070" level="5">
+    <decoded_as>web-accesslog</decoded_as>
+    <match>/DVWA/</match>
+    <description>DVWA vulnerable web application accessed</description>
+    <group>web,dvwa,</group>
+  </rule>
+
+  <!-- Detect SQL Injection Attempts (T1190) -->
+  <rule id="100071" level="10">
+    <if_sid>100070</if_sid>
+    <match>union.*select|' or 1=1|admin'--|; drop</match>
+    <description>SQL injection attempt against DVWA - Web exploit (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,sql_injection,pci_dss_6.5.1,</group>
+  </rule>
+
+  <!-- Detect Command Injection Attempts (T1190) -->
+  <rule id="100072" level="10">
+    <if_sid>100070</if_sid>
+    <match>; cat |; ls |; id |; whoami |&& cat |&& ls</match>
+    <description>Command injection attempt against DVWA - Web exploit (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,command_injection,pci_dss_6.5.1,</group>
+  </rule>
+
+  <!-- Detect File Upload Attempts -->
+  <rule id="100073" level="9">
+    <if_sid>100070</if_sid>
+    <match>upload.php|hackable/uploads/</match>
+    <description>File upload to DVWA detected - Possible webshell deployment (T1190)</description>
+    <mitre>
+      <id>T1190</id>
+    </mitre>
+    <group>web,file_upload,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- SMB/Samba Access Rules                     -->
+  <!-- ========================================== -->
+
+  <!-- Detect Anonymous SMB Access (T1021.002) -->
+  <rule id="100080" level="8">
+    <program_name>smbd</program_name>
+    <match>guest|nobody</match>
+    <description>Anonymous SMB share access - Remote Services (T1021.002)</description>
+    <mitre>
+      <id>T1021.002</id>
+    </mitre>
+    <group>smb,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- Account Discovery Rules                    -->
+  <!-- ========================================== -->
+
+  <!-- Detect /etc/passwd Access (T1087) -->
+  <rule id="100090" level="7">
+    <match>/etc/passwd</match>
+    <description>/etc/passwd accessed - Account Discovery (T1087.001)</description>
+    <mitre>
+      <id>T1087.001</id>
+    </mitre>
+    <group>discovery,</group>
+  </rule>
+
+  <!-- Detect User Enumeration Commands -->
+  <rule id="100091" level="7">
+    <match>w | who | users | id | groups | getent</match>
+    <description>User enumeration command executed - Account Discovery (T1087)</description>
+    <mitre>
+      <id>T1087</id>
+    </mitre>
+    <group>discovery,</group>
+  </rule>
+
+  <!-- ========================================== -->
+  <!-- Composite Attack Rules                     -->
+  <!-- ========================================== -->
+
+  <!-- Multiple Attack Techniques from Same Source -->
+  <rule id="100100" level="14" frequency="3" timeframe="300">
+    <if_matched_sid>100001</if_matched_sid>
+    <if_matched_sid>100040</if_matched_sid>
+    <if_matched_sid>100050</if_matched_sid>
+    <description>Multiple attack techniques detected from same source - Active intrusion!</description>
+    <group>intrusion_attempt,</group>
+  </rule>
+
+</group>
