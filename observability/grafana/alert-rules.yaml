@@ -1,0 +1,295 @@
+apiVersion: 1
+groups:
+    - orgId: 1
+      name: homelab
+      folder: Homelab
+      interval: 1m
+      rules:
+        - uid: fg2ckp1l63t34d
+          title: Disk almost full
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: dg2c57w9o2ayoa
+              model:
+                editorMode: code
+                expr: 100 * (1 - node_filesystem_avail_bytes{fstype=~"xfs|btrfs|ext4"} / node_filesystem_size_bytes{fstype=~"xfs|btrfs|ext4"})
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 85
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 10m
+          isPaused: false
+          notification_settings:
+            receiver: ntfy
+        - uid: cg2ckva99bv9cb
+          title: High CPU
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: dg2c57w9o2ayoa
+              model:
+                editorMode: code
+                expr: 100 - avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 90
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 15m
+          annotations:
+            summary: CPU on {{ $labels.host }} at {{ $values.A }}%
+          isPaused: false
+          notification_settings:
+            receiver: ntfy
+        - uid: dg2cl2gwhc0sgc
+          title: Container stopped
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: dg2c57w9o2ayoa
+              model:
+                editorMode: code
+                expr: time() - max by (name) (max_over_time(container_last_seen{name!=""}[1d]))
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 120
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 5m
+          annotations:
+            summary: '{{ $labels.name }} has not been seen for {{ $values.A }}s'
+          isPaused: false
+          notification_settings:
+            receiver: ntfy
+        - uid: fg2cn5hhtcdfkc
+          title: Scrape target down
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: dg2c57w9o2ayoa
+              model:
+                editorMode: code
+                expr: up
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 1
+                        type: lt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: NoData
+          execErrState: Error
+          for: 2m
+          annotations:
+            summary: '{{ $labels.job }} ({{ $labels.instance }}) is down'
+          isPaused: false
+          notification_settings:
+            receiver: ntfy
+        - uid: cg2corrauygw0e
+          title: Authentik failed logins
+          condition: C
+          data:
+            - refId: A
+              queryType: statsRange
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: ag2c5b6ekoow0e
+              model:
+                datasource:
+                    type: victoriametrics-logs-datasource
+                    uid: ag2c5b6ekoow0e
+                editorMode: code
+                expr: container:authentik-server _msg:"Invalid credentials" | stats count() as failures
+                instant: true
+                intervalMs: 1000
+                maxDataPoints: 43200
+                queryType: statsRange
+                refId: A
+            - refId: reducer
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 0
+                            - 0
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params: []
+                      reducer:
+                        params: []
+                        type: count
+                      type: query
+                datasource:
+                    name: Expression
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                reducer: count
+                refId: reducer
+                type: reduce
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 5
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: reducer
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            summary: '{{ $values.A }} failed Authentik logins in the last 5m on <auth-domain>'
+          isPaused: false
+          notification_settings:
+            receiver: ntfy

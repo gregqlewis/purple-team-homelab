@@ -26,3 +26,8 @@ logs/
 tmp/
 temp/
 *.tmp
+# observability
+.env
+*.db
+**/data/
+sanitize*.sh

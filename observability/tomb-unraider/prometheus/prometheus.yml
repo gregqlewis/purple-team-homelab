@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 30s
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  - job_name: node
+    static_configs:
+      - targets: ["host.docker.internal:9100"]
+        labels:
+          host: tomb-unraider
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: ["cadvisor:8080"]
+        labels:
+          host: tomb-unraider
+
+  - job_name: victorialogs
+    static_configs:
+      - targets: ["victorialogs:9428"]
+
+  - job_name: alloy
+    static_configs:
+      - targets: ["alloy:12345"]
+
+  # Raspberry Pi 4 - uncomment later
+  # - job_name: node-pi
+  #   static_configs:
+  #     - targets: ["<pi-hostname>:9100"]
+  #       labels:
+  #         host: raspberry-pi
+
+  - job_name: node-pi
+    static_configs:
+      - targets: ["<pi-ip>:9100"]
+        labels:
+          host: watchdog

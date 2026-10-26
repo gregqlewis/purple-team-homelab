@@ -1,0 +1,49 @@
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "containers" {
+  targets = []
+
+  rule {
+    source_labels = ["__meta_docker_container_name"]
+    regex         = "/(.*)"
+    target_label  = "container"
+  }
+
+  rule {
+    target_label = "server"
+    replacement  = "tomb-unraider"
+  }
+
+  rule {
+    target_label = "job"
+    replacement  = "docker"
+  }
+}
+
+loki.source.docker "containers" {
+  host          = "unix:///var/run/docker.sock"
+  targets       = discovery.docker.containers.targets
+  relabel_rules = discovery.relabel.containers.rules
+  forward_to    = [loki.write.victorialogs.receiver]
+}
+
+local.file_match "unraid_syslog" {
+  path_targets = [{
+    "__path__" = "/host/var/log/syslog",
+    "job"      = "unraid-syslog",
+    "server"   = "tomb-unraider",
+  }]
+}
+
+loki.source.file "unraid_syslog" {
+  targets    = local.file_match.unraid_syslog.targets
+  forward_to = [loki.write.victorialogs.receiver]
+}
+
+loki.write "victorialogs" {
+  endpoint {
+    url = "http://victorialogs:9428/insert/loki/api/v1/push?_stream_fields=server,job,container&_msg_field=msg,message,event,log"
+  }
+}
