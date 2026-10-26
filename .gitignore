@@ -31,3 +31,4 @@ temp/
 *.db
 **/data/
 sanitize*.sh
+.DS_Store
