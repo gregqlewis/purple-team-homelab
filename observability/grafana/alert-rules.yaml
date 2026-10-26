@@ -293,3 +293,54 @@ groups:
           isPaused: false
           notification_settings:
             receiver: ntfy
+        - uid: bg2ebyiacklxcf
+          title: Container restart loop
+          condition: C
+          data:
+            - refId: A
+              relativeTimeRange:
+                from: 600
+                to: 0
+              datasourceUid: dg2c57w9o2ayoa
+              model:
+                editorMode: code
+                expr: '  changes(container_start_time_seconds{name!=""}[15m])'
+                instant: true
+                intervalMs: 1000
+                legendFormat: __auto
+                maxDataPoints: 43200
+                range: false
+                refId: A
+            - refId: C
+              queryType: expression
+              datasourceUid: __expr__
+              model:
+                conditions:
+                    - evaluator:
+                        params:
+                            - 3
+                        type: gt
+                      operator:
+                        type: and
+                      query:
+                        params:
+                            - C
+                      reducer:
+                        params: []
+                        type: last
+                      type: query
+                datasource:
+                    type: __expr__
+                    uid: __expr__
+                expression: A
+                intervalMs: 1000
+                maxDataPoints: 43200
+                refId: C
+                type: threshold
+          noDataState: OK
+          execErrState: Error
+          annotations:
+            summary: '{{ $labels.name }} restarted {{ $values.A }} times in 15m'
+          isPaused: false
+          notification_settings:
+            receiver: ntfy

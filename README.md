@@ -18,6 +18,7 @@ This project demonstrates a production-quality vulnerable environment that:
 - Simulates **real-world security misconfigurations** found in enterprise environments
 - Maps vulnerabilities to **MITRE ATT&CK** framework techniques
 - Integrates with **Wazuh SIEM** for detection engineering
+- Runs a self-hosted **observability stack** (Grafana, Prometheus, VictoriaLogs) for logs, performance dashboards, and phone alerting
 - Focuses on **cloud security** scenarios (Docker, AWS credentials)
 - Provides hands-on experience for **offensive and defensive** security operations
 
@@ -28,37 +29,48 @@ This project demonstrates a production-quality vulnerable environment that:
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│              Unraid Server                      │
-│                                                 │
-│  ┌──────────────────────────────────────────┐   │
-│  │ Ubuntu 24.04 VulnLab                     │   │
-│  │ • SSH (weak authentication)              │   │
-│  │ • DVWA (vulnerable web app)              │   │
-│  │ • Docker API (exposed)                   │   │
-│  │ • AWS credentials (leaked)               │   │
-│  │ • NFS/FTP/SMB (open shares)              │   │
-│  │ • SUID binaries                          │   │
-│  │ • Vulnerable cron jobs                   │   │
-│  │                                          │   │
-│  │ [Wazuh Agent] ──────────────────────────┐│   │
-│  └──────────────────────────────────────────┘   │
-│                                            │    │
-│  ┌─────────────────────────────────────────┼───┐│
-│  │ Wazuh Manager + Graylog + OpenSearch    │   ││
-│  │ • Custom detection rules                │   ││
-│  │ • MITRE ATT&CK mapping                  │   ││
-│  │ • Real-time alerting                    │   ││
-│  └─────────────────────────────────────────────┘│
-└─────────────────────────────────────────────────┘
-                       ▲
-                       │ Attack simulations
-                       │
-                ┌──────┴──────┐
-                │  Kali Linux │
-                │  (Attacker) │
-                └─────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│                        Unraid Server                         │
+│                                                              │
+│  ┌──────────────────────────────────────┐                    │
+│  │ Ubuntu 24.04 VulnLab (VM)            │                    │
+│  │ • SSH (weak authentication)          │                    │
+│  │ • DVWA (vulnerable web app)          │                    │
+│  │ • Docker API (exposed)               │                    │
+│  │ • AWS credentials (leaked)           │                    │
+│  │ • NFS/FTP/SMB (open shares)          │                    │
+│  │ • SUID binaries, vulnerable cron     │                    │
+│  │ [Wazuh Agent]                        │                    │
+│  └──────────────────────────────────────┘                    │
+│                    │ events                                  │
+│                    ▼                                         │
+│  ┌──────────────────────────────────────┐                    │
+│  │ Wazuh SIEM (VM)                      │                    │
+│  │ Manager + Indexer + Dashboard        │                    │
+│  │ • Custom detection rules             │                    │
+│  │ • MITRE ATT&CK mapping               │                    │
+│  │ • 90-day index retention             │                    │
+│  └──────────────────────────────────────┘                    │
+│                                                              │
+│  ┌──────────────────────────────────────┐                    │
+│  │ Observability stack (Docker)         │                    │
+│  │ Grafana · Prometheus · VictoriaLogs  │                    │
+│  │ Alloy · cAdvisor · node-exporter     │                    │
+│  │ • Metrics, logs, and alert rules     │                    │
+│  └──────────────────────────────────────┘                    │
+└──────────────────────────────────────────────────────────────┘
+        ▲                                   ▲
+        │ attack simulations                │ health checks
+ ┌──────┴──────┐                 ┌──────────┴──────────────┐
+ │ Kali Linux  │                 │ Raspberry Pi 4          │
+ │ (attacker)  │                 │ ntfy · Uptime Kuma      │
+ └─────────────┘                 └──────────┬──────────────┘
+                                            │ push alerts (Tailscale)
+                                            ▼
+                                          Phone
 ```
+
+The observability stack and the Pi watch each other: Grafana alerts if the Pi stops reporting, and Uptime Kuma on the Pi alerts if the NAS, Grafana, or Wazuh goes down. Both send alerts through a self-hosted ntfy server. Details: [observability/README.md](observability/README.md).
 
 ---
 
@@ -97,8 +109,8 @@ This project demonstrates a production-quality vulnerable environment that:
 **Option 1: Automated Setup (Recommended)**
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/purple-team-lab.git
-cd purple-team-lab
+git clone https://github.com/gregqlewis/purple-team-homelab.git
+cd purple-team-homelab
 
 # Run the complete installation
 cd scripts/setup
@@ -179,6 +191,24 @@ Custom Wazuh rules are provided to detect all implemented attack techniques:
 
 ---
 
+## 📈 Observability & Alerting
+
+Wazuh handles security detections. A separate open-source stack covers everything else: log search across every container, host and container performance, and availability.
+
+| Layer | Tools |
+|---|---|
+| Logs | Grafana Alloy → VictoriaLogs (LogsQL) |
+| Metrics | Prometheus, node-exporter, cAdvisor |
+| Dashboards and alert rules | Grafana |
+| Independent uptime checks | Uptime Kuma on a Raspberry Pi |
+| Notifications | Self-hosted ntfy, reached over Tailscale |
+
+Alert rules cover disk usage, CPU, stopped containers, container restart loops, scrape targets going down, and bursts of failed SSO logins.
+
+The stack's first day surfaced three real incidents: an unattended Nextcloud upgrade crash loop, a Wazuh SSO 502 caused by oversized headers, and the Wazuh indexer quietly heading toward its shard limit. Write-ups with root causes and fixes are in [observability/README.md#incidents](observability/README.md#incidents).
+
+---
+
 ## 📊 MITRE ATT&CK Coverage
 
 ### Tactics Covered
@@ -202,6 +232,7 @@ Custom Wazuh rules are provided to detect all implemented attack techniques:
 - **[Attack Scenarios](docs/attack-scenarios.md)** - Practical exploitation examples
 - **[Detection Rules](docs/detection-rules.md)** - Wazuh SIEM configuration
 - **[MITRE Mapping](docs/mitre-mapping.md)** - ATT&CK framework alignment
+- **[Observability Stack](observability/README.md)** - Logs, metrics, alerting, and incident write-ups
 
 ---
 
@@ -284,4 +315,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🔖 Tags
 
-`cybersecurity` `purple-team` `vulnerability-testing` `mitre-attack` `wazuh` `docker-security` `cloud-security` `penetration-testing` `siem` `detection-engineering` `ubuntu` `cissp` `offensive-security` `defensive-security` `home-lab`
+`cybersecurity` `purple-team` `vulnerability-testing` `mitre-attack` `wazuh` `docker-security` `cloud-security` `penetration-testing` `siem` `detection-engineering` `ubuntu` `cissp` `offensive-security` `defensive-security` `home-lab` `observability` `grafana` `prometheus` `incident-response`
