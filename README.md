@@ -120,13 +120,13 @@ sudo ./install-all.sh
 
 **Option 2: Manual Step-by-Step**
 
-See [docs/installation.md](docs/installation.md) for detailed manual installation instructions.
+Each stage of [`scripts/setup/install-all.sh`](scripts/setup/install-all.sh) is labeled, so individual steps can be run by hand.
 
 ### Post-Installation
 
 1. **Verify Services:**
    ```bash
-   ./scripts/verify-lab.sh
+   systemctl --no-pager is-active ssh apache2 docker nfs-kernel-server vsftpd smbd
    ```
 
 2. **Configure Wazuh Agent:**
@@ -187,7 +187,7 @@ Custom Wazuh rules are provided to detect all implemented attack techniques:
 - FTP anonymous connections
 - Suspicious cron script modifications
 
-**Rule details:** [docs/detection-rules.md](docs/detection-rules.md)
+**Rule definitions:** [configs/wazuh/local_rules.xml](configs/wazuh/local_rules.xml)
 
 ---
 
@@ -227,10 +227,10 @@ The stack's first day surfaced three real incidents: an unattended Nextcloud upg
 
 ## 📚 Documentation
 
-- **[Architecture](docs/architecture.md)** - Detailed system design
-- **[Installation Guide](docs/installation.md)** - Step-by-step setup
+- **[Architecture](#️-architecture)** - System design diagram
+- **[Installation Script](scripts/setup/install-all.sh)** - Automated setup
 - **[Attack Scenarios](docs/attack-scenarios.md)** - Practical exploitation examples
-- **[Detection Rules](docs/detection-rules.md)** - Wazuh SIEM configuration
+- **[Detection Rules](configs/wazuh/local_rules.xml)** - Custom Wazuh rules
 - **[MITRE Mapping](docs/mitre-mapping.md)** - ATT&CK framework alignment
 - **[Observability Stack](observability/README.md)** - Logs, metrics, alerting, and incident write-ups
 
