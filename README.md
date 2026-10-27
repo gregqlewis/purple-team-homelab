@@ -232,6 +232,7 @@ The stack's first day surfaced three real incidents: an unattended Nextcloud upg
 - **[Attack Scenarios](docs/attack-scenarios.md)** - Practical exploitation examples
 - **[Detection Rules](configs/wazuh/local_rules.xml)** - Custom Wazuh rules
 - **[MITRE Mapping](docs/mitre-mapping.md)** - ATT&CK framework alignment
+- **[T1087 Account Discovery](docs/attacks/T1087-Account-Discovery.md)** - Detection validation for rules 100090/100091
 - **[Observability Stack](observability/README.md)** - Logs, metrics, alerting, and incident write-ups
 
 ---

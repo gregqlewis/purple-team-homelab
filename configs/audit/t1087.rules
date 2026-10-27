@@ -1,0 +1,25 @@
+# T1087 Account Discovery - auditd rules
+#
+# Deploy to /etc/audit/rules.d/t1087.rules on the MONITORED host (the VulnLab),
+# then load with:  sudo augenrules --load
+# Confirm with:    sudo auditctl -l
+#
+# These supply the telemetry for Wazuh rules 100090 and 100091
+# (configs/wazuh/local_rules.xml). Without them, those rules never fire -
+# that missing-telemetry gap is documented in docs/attacks/T1087-Account-Discovery.md.
+
+# --- Local account enumeration via /etc/passwd read (T1087.001) -> Wazuh 100090 ---
+# NOTE: -p r on a hot file is inherently noisy; many benign processes read
+# /etc/passwd (sudo, PAM, name lookups). Expect high alert volume. In production,
+# prefer detecting command-line access (execve of cat/less/grep on /etc/passwd)
+# over raw file-read auditing.
+-w /etc/passwd -p r -k t1087_passwd_read
+
+# --- Enumeration command execution (T1087) -> Wazuh 100091 ---
+# Scoped to specific binaries to keep volume low. A broad execve rule
+# (-S execve without -F exe=...) also works but floods the pipeline.
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/id -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/getent -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/who -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/w -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/groups -k t1087_enum

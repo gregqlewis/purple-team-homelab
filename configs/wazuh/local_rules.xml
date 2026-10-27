@@ -280,19 +280,24 @@
   <!-- Account Discovery Rules                    -->
   <!-- ========================================== -->
 
-  <!-- Detect /etc/passwd Access (T1087) -->
+  <!-- Detect /etc/passwd Access via auditd (T1087.001) -->
+  <!-- Requires auditd watch 't1087_passwd_read' (see configs/audit/t1087.rules). -->
+  <!-- Child of 80700 (auditd base rule); matches the decoded audit.key field. -->
   <rule id="100090" level="7">
-    <match>/etc/passwd</match>
+    <if_sid>80700</if_sid>
+    <field name="audit.key">t1087_passwd_read</field>
     <description>/etc/passwd accessed - Account Discovery (T1087.001)</description>
     <mitre>
       <id>T1087.001</id>
     </mitre>
-    <group>discovery,</group>
+    <group>discovery,pci_dss_10.2.1,</group>
   </rule>
 
-  <!-- Detect User Enumeration Commands -->
+  <!-- Detect User Enumeration Commands via auditd (T1087) -->
+  <!-- Requires auditd key 't1087_enum' scoped to enumeration binaries. -->
   <rule id="100091" level="7">
-    <match>w | who | users | id | groups | getent</match>
+    <if_sid>80700</if_sid>
+    <field name="audit.key">t1087_enum</field>
     <description>User enumeration command executed - Account Discovery (T1087)</description>
     <mitre>
       <id>T1087</id>
