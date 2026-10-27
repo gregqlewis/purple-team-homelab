@@ -1,6 +1,6 @@
 # T1087: Account Discovery
 
-Detection validation for MITRE ATT&CK T1087 (Account Discovery) against the Ubuntu VulnLab, monitored by Wazuh. This write-up runs common local account enumeration commands on the target, traces each one to the custom Wazuh rule meant to catch it, and records where the detection holds up and where it does not.
+Detection validation for MITRE ATT&CK T1087 (Account Discovery) against the Ubuntu VulnLab, monitored by Wazuh. This write-up runs common local account-enumeration commands on the target, traces each one to the custom Wazuh rule meant to catch it, and documents what it took to make those rules actually fire — including a detection that looked deployed but never matched a single event.
 
 ---
 
@@ -9,9 +9,12 @@ Detection validation for MITRE ATT&CK T1087 (Account Discovery) against the Ubun
 - [Technique Overview](#technique-overview)
 - [Lab Setup](#lab-setup)
 - [Detection Objective](#detection-objective)
-- [Execution](#execution)
-- [Detection Analysis](#detection-analysis)
-- [Findings and Gaps](#findings-and-gaps)
+- [Baseline: The Rules Were Blind](#baseline-the-rules-were-blind)
+- [Root Cause](#root-cause)
+- [Remediation](#remediation)
+- [Verification](#verification)
+- [Tuning: Signal vs. Noise](#tuning-signal-vs-noise)
+- [Findings Summary](#findings-summary)
 - [Hardening Notes](#hardening-notes)
 
 ---
@@ -21,9 +24,9 @@ Detection validation for MITRE ATT&CK T1087 (Account Discovery) against the Ubun
 **MITRE ATT&CK:** [T1087](https://attack.mitre.org/techniques/T1087/) (Account Discovery), [T1087.001](https://attack.mitre.org/techniques/T1087/001/) (Local Account)
 **Tactic:** Discovery (TA0007)
 
-After gaining a foothold, an attacker enumerates accounts to decide what to target next: which users have login shells, which belong to privileged groups such as `sudo` or `docker`, and who is logged in right now. On Linux this needs no special privileges. `/etc/passwd` is world-readable by design, and tools such as `id`, `who`, `groups`, and `getent` are on every host.
+After gaining a foothold, an attacker enumerates accounts to decide what to target next: which users have login shells, which belong to privileged groups such as `sudo` or `docker`, and who is logged in right now. On Linux this needs no special privileges. `/etc/passwd` is world-readable by design, and tools such as `id`, `who`, `groups`, and `getent` ship on every host.
 
-In this lab, account discovery is the step between initial access (T1110 SSH brute force) and privilege escalation. It shows the attacker the `admin`, `backup`, and `developer` accounts created by the setup script.
+In this lab, account discovery is the step between initial access (T1110, SSH brute force) and privilege escalation. It surfaces the `admin`, `backup`, and `developer` accounts created by the setup script.
 
 ---
 
@@ -33,203 +36,112 @@ In this lab, account discovery is the step between initial access (T1110 SSH bru
 |-----------|---------|
 | **Target** | Ubuntu 24.04 VulnLab VM, built by [`scripts/setup/install-all.sh`](../../scripts/setup/install-all.sh) |
 | **Address** | `<vulnlab-ip>` |
-| **Wazuh agent** | Installed on the VulnLab, reporting as `<vulnlab-agent>` |
-| **Wazuh manager** | `<wazuh-manager-ip>` |
+| **Wazuh agent** | Installed on the VulnLab, reporting as `<vulnlab-agent>` (agent 004) |
+| **Wazuh manager** | `<wazuh-manager-ip>`, Wazuh v4.14.9 |
+| **Telemetry** | Linux `auditd`, forwarded to Wazuh (see [`configs/audit/t1087.rules`](../../configs/audit/t1087.rules)) |
 | **Detection rules** | 100090 and 100091 in [`configs/wazuh/local_rules.xml`](../../configs/wazuh/local_rules.xml) |
 | **Access** | Interactive shell on the VulnLab as a lab user |
 
-> **TODO:** Record the log source that carried these commands to Wazuh (for example auditd `execve` records or shell command logging). `install-all.sh` does not configure either, and the Wazuh agent does not log command execution or file reads by default. See [Findings and Gaps](#findings-and-gaps).
+> **Note on telemetry:** `install-all.sh` does not install `auditd` or configure command logging, and the Wazuh agent does not record command execution or file reads by default. A key finding of this exercise was that the account-discovery rules had *no log source to match against* on a fresh build. Adding `auditd` was the first remediation step.
 
 ---
 
 ## Detection Objective
 
-Confirm that each enumeration command produces a Wazuh alert mapped to T1087, and identify which commands go undetected.
+Confirm that local account-enumeration activity produces a Wazuh alert mapped to T1087, and identify any gap between the rules as written and the rules as deployed.
 
-| Rule | Level | Looks for | MITRE |
-|------|-------|-----------|-------|
-| **100090** | 7 | The string `/etc/passwd` anywhere in a log line | T1087.001 |
-| **100091** | 7 | User enumeration command names (`w`, `who`, `users`, `id`, `groups`, `getent`) | T1087 |
-
----
-
-## Execution
-
-Each command was run on the VulnLab, then matched to the alert it produced in the Wazuh dashboard (Security Events, filtered to agent `<vulnlab-agent>`).
-
-The **Expected rule** column is based on reading the rule patterns (see [Detection Analysis](#detection-analysis)). The **Observed** column records what Wazuh actually produced.
-
-| # | Command | Expected rule | Observed |
-|---|---------|---------------|----------|
-| 1 | `cat /etc/passwd` | 100090 | _TBD_ |
-| 2 | `id` | 100091 | _TBD_ |
-| 3 | `who` | 100091 | _TBD_ |
-| 4 | `groups` | 100091 | _TBD_ |
-| 5 | `getent passwd` | 100091 | _TBD_ |
-
-### 1. `cat /etc/passwd`
-
-```bash
-cat /etc/passwd
-```
-
-**Rule:** 100090, /etc/passwd accessed - Account Discovery (T1087.001)
-
-**Alert:**
-```json
-// TODO: paste Wazuh alert JSON
-```
-
-![Wazuh alert for cat /etc/passwd](../../images/screenshots/T1087/01-cat-etc-passwd.png)
-
-### 2. `id`
-
-```bash
-id
-```
-
-**Rule:** 100091, User enumeration command executed - Account Discovery (T1087)
-
-**Alert:**
-```json
-// TODO: paste Wazuh alert JSON
-```
-
-![Wazuh alert for id](../../images/screenshots/T1087/02-id.png)
-
-### 3. `who`
-
-```bash
-who
-```
-
-**Rule:** 100091, User enumeration command executed - Account Discovery (T1087)
-
-**Alert:**
-```json
-// TODO: paste Wazuh alert JSON
-```
-
-![Wazuh alert for who](../../images/screenshots/T1087/03-who.png)
-
-### 4. `groups`
-
-```bash
-groups
-```
-
-**Rule:** 100091, User enumeration command executed - Account Discovery (T1087)
-
-**Alert:**
-```json
-// TODO: paste Wazuh alert JSON
-```
-
-![Wazuh alert for groups](../../images/screenshots/T1087/04-groups.png)
-
-### 5. `getent passwd`
-
-```bash
-getent passwd
-```
-
-**Rule:** 100091, User enumeration command executed - Account Discovery (T1087)
-
-**Alert:**
-```json
-// TODO: paste Wazuh alert JSON
-```
-
-![Wazuh alert for getent passwd](../../images/screenshots/T1087/05-getent-passwd.png)
+| Rule | Level | Intended signal | MITRE |
+|------|-------|-----------------|-------|
+| **100090** | 7 | A read of `/etc/passwd` | T1087.001 |
+| **100091** | 7 | Execution of an enumeration command (`id`, `who`, `w`, `users`, `groups`, `getent`) | T1087 |
 
 ---
 
-## Detection Analysis
+## Baseline: The Rules Were Blind
 
-Both rules use a single `<match>` element with no parent rule (`if_sid`), decoder, or program name. Wazuh tests a `<match>` pattern against the full log line, so both rules depend on the command line or file path appearing as plain text in some log.
+Before any tuning, the test commands were run on the VulnLab and the dashboard was checked for alerts on rules 100090 / 100091.
 
-### Rule 100090: `/etc/passwd` access
+**Result: no alerts.** Two separate reasons, uncovered in order.
+
+**1. No telemetry.** `auditd` was not installed, so nothing logged file reads or command execution:
+
+```
+$ systemctl is-active auditd
+inactive          # (package not installed)
+```
+
+**2. Even with telemetry, the rule did not match.** After installing `auditd` and adding a watch on `/etc/passwd`, a real read was captured and run through `wazuh-logtest` on the manager. The event decoded correctly but hit only the base audit rule at **level 0** — no alert:
+
+```
+**Phase 2: Completed decoding.
+	name: 'auditd'
+	audit.key: 't1087_passwd_read'
+	audit.command: 'sudo'
+	...
+
+**Phase 3: Completed filtering (rules).
+	id: '80700'
+	level: '0'
+	description: 'Audit: Messages grouped.'
+```
+
+> *Screenshot: `images/screenshots/T1087/01-baseline-no-alerts.png` — dashboard filtered to rules 100090/100091, zero hits.*
+> *Screenshot: `images/screenshots/T1087/02-logtest-before.png` — logtest showing rule 80700, level 0.*
+
+---
+
+## Root Cause
+
+Three problems, from most to least obvious.
+
+**1. Rules authored against the wrong log format.** Both rules used a bare `<match>` on raw text:
 
 ```xml
+<!-- original -->
 <rule id="100090" level="7">
   <match>/etc/passwd</match>
-  <description>/etc/passwd accessed - Account Discovery (T1087.001)</description>
-  <mitre>
-    <id>T1087.001</id>
-  </mitre>
-  <group>discovery,</group>
+  ...
 </rule>
-```
-
-- **How it matches:** The rule fires on any log line that contains the substring `/etc/passwd`. `cat /etc/passwd` matches if the command line or the opened file path is logged.
-- **What it misses:** Reading the file without naming it. `getent passwd` reads `/etc/passwd` through NSS, but the command line never contains the path. Other examples are `cat /etc/pass*`, `cd /etc && cat passwd`, or `awk -F: '{print $1}' /etc/./passwd`.
-- **What it over-matches:** Any log line that mentions the path, including routine activity such as `useradd`, `passwd`, package updates, and FIM events. Nothing ties the alert to a read by a user.
-
-### Rule 100091: user enumeration commands
-
-```xml
 <rule id="100091" level="7">
   <match>w | who | users | id | groups | getent</match>
-  <description>User enumeration command executed - Account Discovery (T1087)</description>
-  <mitre>
-    <id>T1087</id>
-  </mitre>
-  <group>discovery,</group>
+  ...
 </rule>
 ```
 
-- **How it matches:** In a Wazuh `<match>` pattern, `|` separates alternatives. Spaces are not trimmed, so the spaces around each `|` are part of the pattern. The rule therefore searches for these six literal strings:
+A `<match>` with no `if_sid` or decoder is never evaluated against decoded `auditd` events, and the filename in an audit event lives in a structured field (`audit.*`), not as the literal substring `/etc/passwd` in the line the rule inspected. The rules could only ever have matched plain command-line text in a log source that did not exist on the host.
 
-  | Alternative | Notes |
-  |-------------|-------|
-  | `w␣` | The letter `w` followed by a space. This matches inside ordinary words such as "new " or "show ". |
-  | `␣who␣` | Needs a space on both sides |
-  | `␣users␣` | Needs a space on both sides |
-  | `␣id␣` | Needs a space on both sides |
-  | `␣groups␣` | Needs a space on both sides |
-  | `␣getent` | Needs a leading space only |
+Rule 100091 was additionally broken on its own terms: in a Wazuh `<match>`, `|` separates alternatives and surrounding spaces are literal, so it searched for `"w "`, `" who "`, `" id "`, etc. A bare `id` at end of line, or auditd's `a0="id"`, has no trailing space and would not match — while `"w "` matches ordinary words like `"new "`, generating false positives.
 
-- **Effect per command:**
-  - `getent passwd` is the most reliable match. ` getent` is followed by an argument, so the pattern holds whenever a space comes before it.
-  - `id`, `who`, and `groups` usually run with no arguments. If the log line ends with the command, or the command name is quoted (as in auditd `a0="id"`), the trailing space is missing and the alternative does not match.
-  - `w ` matches far more than the `w` command, so it can raise level-7 alerts on unrelated log lines.
+**2. The deployed ruleset had drifted from source control.** Comparing the live manager to the repo:
 
-> **TODO:** Fill in after reviewing the alert JSON. For each command, note which alternative matched by checking the `full_log` field, and whether the expected rule fired.
-
----
-
-## Findings and Gaps
-
-1. **No log source in the build.** `install-all.sh` does not install auditd or set up command logging, so a fresh VulnLab produces no log line for either rule to match. The detection depends on telemetry that exists outside this repo.
-2. **Command matching depends on surrounding spaces (100091).** Bare `id`, `who`, and `groups` can go undetected depending on how the log source formats the command line.
-3. **False positives from `w ` (100091).** The first alternative matches common text, which drowns out the real detections.
-4. **Substring matching is easy to evade (100090).** Globs, relative paths, and NSS lookups all read the file without the literal string `/etc/passwd`.
-5. **No parent rule or decoder.** Both rules are evaluated as top-level rules against every event. Whether they fire depends on how they interact with the stock Wazuh rules for the same log line. Test each sample line with `wazuh-logtest` to confirm.
-6. **No correlation.** A single `id` and a burst of five enumeration commands in ten seconds raise the same level-7 alert. The composite rule 100100 does not include the discovery rules, so account discovery never adds to the "active intrusion" signal.
-7. **MITRE granularity.** Rule 100091 maps to the parent technique T1087, but every command it targets is local account discovery (T1087.001). Its XML comment also says T1087 while the mapping says T1087.001.
-
----
-
-## Hardening Notes
-
-Account discovery cannot be prevented on Linux. `/etc/passwd` must stay world-readable for the system to work. The aim is reliable detection, not blocking.
-
-**1. Add a defined telemetry source (auditd)**
-
-```bash
-sudo apt install -y auditd
+```
+$ grep -oE 'rule id="[0-9]+"' /var/ossec/etc/rules/local_rules.xml | sort -u
+100010  100020  100030  100050  100060  100090  100100  100101  100102
 ```
 
-```bash
+- The repo tracks **25** custom rules; only **9** were live.
+- Rule **100091** — one of the two rules under test — **was never deployed at all.**
+- Two live rules (**100101**, **100102**) exist nowhere in the repo; they are AWS CloudTrail rules belonging to a separate cloud-detection lab, chained under a locally-redefined 100100.
+- There was no pipeline keeping source control and the running manager in sync.
+
+> *Screenshot: `images/screenshots/T1087/03-rule-drift.png` — live rule inventory vs. repo.*
+
+**3. No telemetry in the build** (as above): the repo's own install script provisions nothing for these rules to consume.
+
+---
+
+## Remediation
+
+**Step 1 — Add a defined telemetry source.** Install `auditd` on the target and watch the relevant activity. See [`configs/audit/t1087.rules`](../../configs/audit/t1087.rules):
+
+```
 # /etc/audit/rules.d/t1087.rules
 -w /etc/passwd -p r -k t1087_passwd_read
--w /etc/group  -p r -k t1087_group_read
--a always,exit -F arch=b64 -S execve -F exe=/usr/bin/id     -k t1087_enum
--a always,exit -F arch=b64 -S execve -F exe=/usr/bin/who    -k t1087_enum
--a always,exit -F arch=b64 -S execve -F exe=/usr/bin/groups -k t1087_enum
--a always,exit -F arch=b64 -S execve -F exe=/usr/bin/getent -k t1087_enum
--a always,exit -F arch=b64 -S execve -F exe=/usr/bin/w      -k t1087_enum
--a always,exit -F arch=b64 -S execve -F exe=/usr/bin/users  -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/id      -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/getent  -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/who     -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/w       -k t1087_enum
+-a always,exit -F arch=b64 -S execve -F exe=/usr/bin/groups  -k t1087_enum
 ```
 
 Forward the audit log to Wazuh in the agent's `ossec.conf`:
@@ -241,50 +153,121 @@ Forward the audit log to Wazuh in the agent's `ossec.conf`:
 </localfile>
 ```
 
-A read watch on `/etc/passwd` fires constantly, because `login`, `sshd`, `sudo`, and every NSS lookup read the file. Scope it with `-F auid>=1000 -F auid!=unset` so it only records reads by interactive users.
-
-**2. Rewrite the rules on decoded fields instead of raw text**
-
-The following is a proposed replacement, not yet tested in the lab:
+**Step 2 — Rewrite the rules against decoded fields.** Instead of matching raw text, chain to the audit base rule (80700) and match the `audit.key` the watch sets. See [`configs/wazuh/local_rules.xml`](../../configs/wazuh/local_rules.xml):
 
 ```xml
+<!-- Detect /etc/passwd Access via auditd (T1087.001) -->
 <rule id="100090" level="7">
-  <if_group>audit</if_group>
+  <if_sid>80700</if_sid>
   <field name="audit.key">t1087_passwd_read</field>
-  <description>/etc/passwd read by interactive user - Account Discovery (T1087.001)</description>
+  <description>/etc/passwd accessed - Account Discovery (T1087.001)</description>
   <mitre><id>T1087.001</id></mitre>
-  <group>discovery,</group>
+  <group>discovery,pci_dss_10.2.1,</group>
 </rule>
 
+<!-- Detect User Enumeration Commands via auditd (T1087) -->
 <rule id="100091" level="7">
-  <if_group>audit</if_group>
+  <if_sid>80700</if_sid>
   <field name="audit.key">t1087_enum</field>
-  <description>User enumeration command executed: $(audit.exe) - Account Discovery (T1087.001)</description>
-  <mitre><id>T1087.001</id></mitre>
+  <description>User enumeration command executed - Account Discovery (T1087)</description>
+  <mitre><id>T1087</id></mitre>
   <group>discovery,</group>
 </rule>
 ```
 
-**3. Add a burst rule**
+Because the `auditd` rules scope `t1087_enum` to specific binaries, the Wazuh rule needs only the key as its signal — the audit layer does the filtering.
+
+---
+
+## Verification
+
+After deploying the telemetry and the corrected rules, the same audit events were re-tested in `wazuh-logtest`.
+
+**Rule 100090 — `/etc/passwd` read:**
+```
+**Phase 3: Completed filtering (rules).
+	id: '100090'
+	level: '7'
+	description: '/etc/passwd accessed - Account Discovery (T1087.001)'
+	mitre.id: '['T1087.001']'
+	mitre.tactic: '['Discovery']'
+	mitre.technique: '['Local Account']'
+**Alert to be generated.
+```
+
+**Rule 100091 — enumeration command (`id`):**
+```
+**Phase 2: Completed decoding.
+	audit.command: 'id'
+	audit.exe: '/usr/bin/id'
+	audit.key: 't1087_enum'
+
+**Phase 3: Completed filtering (rules).
+	id: '100091'
+	level: '7'
+	description: 'User enumeration command executed - Account Discovery (T1087)'
+	mitre.id: '['T1087']'
+**Alert to be generated.
+```
+
+Both flipped from **80700 / level 0 (no alert)** to **level-7 alerts with correct MITRE mappings**. Running `cat /etc/passwd` and `id` on the VulnLab then produced live alerts in the dashboard, confirming the full pipeline: command → `auditd` → agent → manager → alert.
+
+> *Screenshot: `images/screenshots/T1087/04-logtest-after.png` — logtest showing 100090/100091 at level 7.*
+> *Screenshot: `images/screenshots/T1087/05-dashboard-alerts.png` — live 100090 and 100091 alerts for agent `<vulnlab-agent>`.*
+
+---
+
+## Tuning: Signal vs. Noise
+
+The detection worked, but the initial audit configuration was far too noisy:
+
+- A broad `execve` audit rule (`-S execve` with no `-F exe=`) logged **every command on the host**, flooding the pipeline.
+- The `-p r` watch on `/etc/passwd` fires on **every read by every process** — `sudo`, PAM, and NSS lookups all read it constantly. One `cat /etc/passwd` was buried among thousands of routine reads; the dashboard showed **~9,000 events** in the window, dominated by 100090.
+
+Tuning applied:
+- **Enumeration:** narrowed the audit rule from catch-all `execve` to specific binaries (`id`, `getent`, `who`, `w`, `groups`) under key `t1087_enum`. Noise from unrelated commands disappears at the source, before it reaches Wazuh.
+- **`/etc/passwd` reads:** inherently noisy. File-read auditing on a hot file cannot be made quiet. In production, prefer detecting *command-line access* to the file (an `execve` of `cat`/`less`/`grep` with an `/etc/passwd` argument) over raw read auditing, or scope the watch to interactive users with `-F auid>=1000 -F auid!=unset`.
+
+> *Screenshot (optional): `images/screenshots/T1087/06-noise.png` — event volume before/after tuning.*
+
+---
+
+## Findings Summary
+
+| # | Finding | Severity | Status |
+|---|---------|----------|--------|
+| 1 | Account-discovery rules had no telemetry source on a fresh build (`auditd` absent) | High | Fixed |
+| 2 | Rules authored against raw text, never matched decoded `auditd` events | High | Fixed |
+| 3 | Rule 100091 was never deployed to the manager | High | Fixed |
+| 4 | Deployed ruleset drifted from source control (9 of 25 rules live; 2 untracked rules from another lab); no sync pipeline | Medium | Documented |
+| 5 | `/etc/passwd` read auditing is inherently high-volume | Low | Tuned / accepted |
+| 6 | 100091 maps to parent T1087; its targets are all T1087.001 (local account) | Low | Noted |
+
+The headline lesson: **a detection rule that exists in source control, is mapped to a technique, and appears in the SIEM can still catch nothing.** Only validation against real telemetry proves a detection works.
+
+---
+
+## Hardening Notes
+
+Account discovery cannot be prevented on Linux — `/etc/passwd` must stay world-readable. The goal is reliable, low-noise detection.
+
+**Add a burst/correlation rule** so a flurry of enumeration counts as more than isolated events:
 
 ```xml
 <rule id="100092" level="10" frequency="4" timeframe="60">
   <if_matched_group>discovery</if_matched_group>
   <same_field>audit.auid</same_field>
-  <description>Multiple account discovery commands by one user in 60s (T1087.001)</description>
-  <mitre><id>T1087.001</id></mitre>
+  <description>Multiple account-discovery commands by one user in 60s (T1087)</description>
+  <mitre><id>T1087</id></mitre>
   <group>discovery,</group>
 </rule>
 ```
+Then add 100092 to the composite intrusion rule so discovery contributes to the "active intrusion" signal.
 
-Then add 100092 to composite rule 100100 so discovery counts toward the intrusion chain.
+**Establish a deployment pipeline.** The drift in Finding #4 is the real operational gap. The version-controlled `local_rules.xml` should be the single source of truth, deployed to the manager by a repeatable process, with a check that the live ruleset matches the repo.
 
-**4. Reduce what discovery reveals**
-
-- Give service accounts `/usr/sbin/nologin`, so `/etc/passwd` does not list them as login targets.
-- Keep `/etc/shadow` at `640 root:shadow`. Account discovery is low impact as long as password hashes stay unreadable.
-- Review membership of the `sudo` and `docker` groups. `groups` and `id` tell an attacker exactly which accounts to target next.
+**Reduce what discovery reveals.** Give service accounts `/usr/sbin/nologin` so they are not listed as login targets; keep `/etc/shadow` at `640 root:shadow`; and review `sudo`/`docker` group membership, since `id` and `groups` hand an attacker a target list.
 
 ---
 
-**Related:** [MITRE Mapping, T1087.001](../mitre-mapping.md#t1087001-account-discovery-local-account) · [Attack Scenarios](../attack-scenarios.md) · [Detection Rules](../../configs/wazuh/local_rules.xml)
+**Related:** [MITRE Mapping, T1087.001](../mitre-mapping.md#t1087001-account-discovery-local-account) · [Attack Scenarios](../attack-scenarios.md) · [Detection Rules](../../configs/wazuh/local_rules.xml) · [Audit Rules](../../configs/audit/t1087.rules)
